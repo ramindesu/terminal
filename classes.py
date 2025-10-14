@@ -9,14 +9,16 @@ class User:
 
 
 class Journey:
-    def __init__(self,start,end,status= "pending"):
-            self.start = start 
-            self.end = end
-            self.status = status
-            
-    def change_status(self,status):
-        if status not in ("canceled","done","pending"):
+    def __init__(self, start, end, status="pending"):
+        self.start = start
+        self.end = end
+        self.status = status
+
+    def change_status(self, status):
+        if status not in ("canceled", "done", "pending"):
             raise ChoiseError("only canceled , done, pending can be chosen")
+        else:
+            self.status = status
 
 
 class Ticket:
@@ -35,3 +37,7 @@ class Traveller(User):
             self.tickets.append(ticket)
         else:
             raise TypeError("the type is not matched")
+
+class Admin(User):
+    def __init__(self, email, username, password):
+        super().__init__(email, username, password)
