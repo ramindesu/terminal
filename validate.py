@@ -21,6 +21,8 @@ class NotAdmin(Exception):
 class ValidateError(Exception):
     pass
 
+class TypeError(Exception):
+    ...
 
 username_validate = re.compile(r"^[a-zA-Z]{3,20}$")
 password_validate = re.compile(
