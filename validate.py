@@ -24,6 +24,9 @@ class ValidateError(Exception):
 class TypeError(Exception):
     ...
 
+class ChoiseError(Exception):
+    ...
+
 username_validate = re.compile(r"^[a-zA-Z]{3,20}$")
 password_validate = re.compile(
     r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z1-9]){8,}$"
