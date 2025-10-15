@@ -1,5 +1,5 @@
 from validate import *
-
+from pprint import pprint
 
 class User:
     def __init__(self, email, username, password):
@@ -24,6 +24,8 @@ class Ticket:
     def __init__(self, journey: Journey, cost):
         self.journey = journey
         self.cost = cost
+    def __str__(self):
+        return f"journey: {self.journey} , cost: {self.cost}"
 
 
 class Traveller(User):
@@ -43,7 +45,7 @@ class Admin(User):
         super().__init__(email, username, password)
 
 class dashboard():
-    def __init__(self,user:User,wallet):
+    def __init__(self,user:Traveller,wallet):
         self.user = list(user)
         self.__wallet = wallet
 
@@ -60,3 +62,7 @@ class dashboard():
         except ZeroValue as e:
             print(f'error: {e}')
         
+    def history(self,user:Traveller):
+        for trip in user.tickets:
+            pprint(trip)
+    
