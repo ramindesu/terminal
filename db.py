@@ -2,7 +2,7 @@ import psycopg
 class Database:
     def __init__(self,dsn):
         """
-        data = 'dbname=terminal user=postgres password=shir884 host=localhost '
+        dsn = 'dbname=terminal user=postgres password=shir884 host=localhost '
         """
         self.dsn = dsn
         self.conn = ''
