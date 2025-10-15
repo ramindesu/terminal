@@ -41,3 +41,22 @@ class Traveller(User):
 class Admin(User):
     def __init__(self, email, username, password):
         super().__init__(email, username, password)
+
+class dashboard():
+    def __init__(self,user:User,wallet):
+        self.user = list(user)
+        self.__wallet = wallet
+
+    @property 
+    def wallet(self):
+        return self.__wallet
+    
+    def charge_wallet(self,amount):
+        try:
+            if amount < 0:
+                raise ZeroValue("cant be smaller than 0 sir")
+            self.__wallet+=amount
+            print(f"the amount:{amount}$ just added to ur wallet new balance: {self.__wallet} ")
+        except ZeroValue as e:
+            print(f'error: {e}')
+        
