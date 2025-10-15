@@ -1,6 +1,7 @@
 from validate import *
 from pprint import pprint
 
+
 class User:
     def __init__(self, email, username, password):
         self.email = validate_email(email)
@@ -8,36 +9,12 @@ class User:
         self.password = validate_password(password)
 
 
-class Journey:
-    def __init__(self, start, end, status="pending"):
-        self.start = start
-        self.end = end
-        self.status = status
-
-    def change_status(self, status):
-        if status not in ("canceled", "done", "pending"):
-            raise ValueError("Only 'canceled', 'done', or 'pending' are allowed.")
-        self.status = status
-
-    def __str__(self):
-        return f"{self.start} => {self.end} | Status: {self.status}"
-
-
-class Ticket:
-    def __init__(self, journey: Journey, cost):
-        self.journey = journey
-        self.cost = cost
-
-    def __str__(self):
-        return f"Journey: {self.journey} | Cost: {self.cost}$"
-
-
 class Traveller(User):
     def __init__(self, email, username, password):
         super().__init__(email, username, password)
         self.tickets = []
 
-    def get_ticket(self, ticket: Ticket):
+    def get_ticket(self, ticket):
         if isinstance(ticket, Ticket):
             self.tickets.append(ticket)
         else:
@@ -48,25 +25,61 @@ class Admin(User):
     def __init__(self, email, username, password):
         super().__init__(email, username, password)
 
-class dashboard():
-    def __init__(self,user:Traveller,wallet):
+
+
+class Journey:
+    def __init__(self, start, end, origin=None, destination=None, status="pending"):
+        self.start = start
+        self.end = end
+        self.origin = origin
+        self.destination = destination
+        self.status = status
+
+    def change_status(self, status):
+        if status not in ("canceled", "done", "pending"):
+            raise ValueError("Only 'canceled', 'done', or 'pending' are allowed.")
+        self.status = status
+
+    def __str__(self):
+        origin_dest = f"{self.origin} → {self.destination}" if self.origin and self.destination else ""
+        return f"{self.start} => {self.end} | {origin_dest} | Status: {self.status}"
+
+
+
+class Ticket:
+    def __init__(self, journey: Journey, cost, quantity=1):
+        self.journey = journey
+        self.cost = cost
+        self.quantity = quantity
+        self.status = 'pending'  
+
+    def __str__(self):
+        return f"Journey: {self.journey} | Cost: {self.cost}$ | Status: {self.status} | Qty: {self.quantity}"
+
+
+
+class dashboard:
+    def __init__(self, user: Traveller, wallet=0):
         self.user = user
         self.__wallet = wallet
 
-    @property 
+    @property
     def wallet(self):
         return self.__wallet
-    
-    def charge_wallet(self,amount):
+
+    def charge_wallet(self, amount):
         try:
-            if amount < 0:
-                raise ZeroValue("cant be smaller than 0 sir")
-            self.__wallet+=amount
-            print(f"the amount:{amount}$ just added to ur wallet new balance: {self.__wallet} ")
+            if amount <= 0:
+                raise ZeroValue("Amount must be positive")
+            self.__wallet += amount
+            print(f" {amount}$ added. New balance: {self.__wallet}$")
         except ZeroValue as e:
-            print(f'error: {e}')
-        
-    def history(self,user:Traveller):
-        for trip in user.tickets:
-            pprint(trip)
-    
+            print(f" Error: {e}")
+
+    def history(self):
+        if not self.user.tickets:
+            print("No tickets purchased yet.")
+        else:
+            print("📜 Ticket history:")
+            for ticket in self.user.tickets:
+                pprint(ticket)
