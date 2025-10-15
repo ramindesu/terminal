@@ -1,10 +1,13 @@
 from classes import *
 from db import Database
 from pprint import pprint
-from os import system
-system("clear")
+import os
+from dotenv import load_dotenv,dotenv_values
+os.system("clear")
+load_dotenv()
+dsn = os.getenv("DSN")
 
-dsn = 'dbname=terminal user=mohammadi password=shir884 host=localhost port=5432'
+# dsn = 'dbname=terminal user=mohammadi password=shir884 host=localhost port=5432'
 
 
 def admin_only(func):
