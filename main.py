@@ -91,7 +91,7 @@ class Service:
         self.current_user = user
         self.dashboard = dashboard(user, 0)  
         self.add_log("register_user")
-        print(f"✅ User {user.username} registered successfully!")
+        print(f" User {user.username} registered successfully!")
 
 
     def register_admin(self):
@@ -101,7 +101,7 @@ class Service:
         admin = Admin(email, username, password)
         self.current_user = admin
         self.add_log("register_admin")
-        print(f"✅ Admin {admin.username} registered successfully!")
+        print(f" Admin {admin.username} registered successfully!")
 
 
     @admin_only
@@ -113,7 +113,7 @@ class Service:
         ticket = Ticket(journey, cost)
         self.tickets.append(ticket)
         self.add_log("add_ticket")
-        print(f"🎫 Ticket added for journey {start} → {end} (Cost: {cost}$)")
+        print(f" Ticket added for journey {start} → {end} (Cost: {cost}$)")
 
 
     def show_tickets(self):
@@ -165,7 +165,7 @@ class Service:
             return
 
         while True:
-            print(f"\n💼 Dashboard — {self.current_user.username}")
+            print(f"\n Dashboard — {self.current_user.username}")
             print("1. Charge wallet")
             print("2. View history")
             print("3. Back to main menu")
