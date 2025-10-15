@@ -1,7 +1,9 @@
 from classes import *
 from db import Database
+from pprint import pprint
 
 dsn = 'dbname=terminal user=postgres password=shir884 host=localhost'
+
 
 def admin_only(func):
     def wrapper(self, *args, **kwargs):
@@ -19,6 +21,7 @@ class Service:
         self.running = True
         self.current_user = None
         self.tickets = []
+        self.dashboard = None  
 
 
     def create_tables(self):
@@ -67,6 +70,8 @@ class Service:
 
 
     def add_log(self, action, journey_id=None):
+        if not self.current_user:
+            return
         with Database(self.data) as cur:
             cur.execute("""
                 INSERT INTO logs (user_id, action, journey_id)
@@ -77,14 +82,17 @@ class Service:
                 )
             """, (self.current_user.email, action, journey_id))
 
+
     def register_user(self):
         email = input("Enter email: ")
         username = input("Enter username: ")
         password = input("Enter password: ")
         user = Traveller(email, username, password)
         self.current_user = user
+        self.dashboard = dashboard(user, 0)  
         self.add_log("register_user")
-        print(f"User {user.username} registered successfully!")
+        print(f"✅ User {user.username} registered successfully!")
+
 
     def register_admin(self):
         email = input("Enter admin email: ")
@@ -93,7 +101,8 @@ class Service:
         admin = Admin(email, username, password)
         self.current_user = admin
         self.add_log("register_admin")
-        print(f" Admin {admin.username} registered successfully!")
+        print(f"✅ Admin {admin.username} registered successfully!")
+
 
     @admin_only
     def add_ticket(self):
@@ -104,11 +113,80 @@ class Service:
         ticket = Ticket(journey, cost)
         self.tickets.append(ticket)
         self.add_log("add_ticket")
-        print(f"Ticket added for journey {start} → {end} (Cost: {cost})")
-    
+        print(f"🎫 Ticket added for journey {start} → {end} (Cost: {cost}$)")
+
+
     def show_tickets(self):
-        for ticket in self.tickets:
-            print(ticket)
+        if not self.tickets:
+            print(" No tickets available.")
+            return
+        print("\nAvailable tickets:")
+        for i, ticket in enumerate(self.tickets, start=1):
+            print(f"{i}. {ticket}")
+
+
+    def buy_ticket(self):
+        if not isinstance(self.current_user, Traveller):
+            print(" Only travellers can buy tickets.")
+            return
+
+        if not self.tickets:
+            print(" No tickets available for purchase.")
+            return
+
+        print("\nAvailable tickets to buy:")
+        for i, ticket in enumerate(self.tickets, start=1):
+            print(f"{i}. {ticket}")
+
+        try:
+            choice = int(input("Enter ticket number to buy: ")) - 1
+            if choice < 0 or choice >= len(self.tickets):
+                raise ChoiseError("Invalid choice")
+
+            ticket = self.tickets[choice]
+
+
+            if self.dashboard.wallet < ticket.cost:
+                raise NotEnoughCash(f" Not enough money. You need {ticket.cost - self.dashboard.wallet}$ more.")
+
+            self.dashboard._dashboard__wallet -= ticket.cost 
+            self.current_user.get_ticket(ticket)
+            self.add_log("buy_ticket")
+
+            print(f" Ticket purchased successfully! Remaining wallet: {self.dashboard.wallet}$")
+
+        except (ValueError, ChoiseError, NotEnoughCash) as e:
+            print(f" Error: {e}")
+
+
+    def open_dashboard(self):
+        if not isinstance(self.current_user, Traveller):
+            print(" Only travellers have a dashboard.")
+            return
+
+        while True:
+            print(f"\n💼 Dashboard — {self.current_user.username}")
+            print("1. Charge wallet")
+            print("2. View history")
+            print("3. Back to main menu")
+            choice = input("Enter choice: ")
+
+            if choice == "1":
+                try:
+                    amount = int(input("Enter amount to charge: "))
+                    self.dashboard.charge_wallet(amount)
+                    self.add_log("charge_wallet")
+                except ValueError:
+                    print(" Invalid amount.")
+            elif choice == "2":
+                print(f"\nTicket history for {self.current_user.username}:")
+                self.dashboard.history(self.current_user)
+                self.add_log("view_history")
+            elif choice == "3":
+                break
+            else:
+                print("Invalid choice. Try again.")
+
 
     def show(self):
         print(f"\n==== {self.title} ====")
@@ -129,14 +207,16 @@ class Service:
                 print("Invalid choice. Try again.")
 
 
-# Example usage
+
 service = Service("Main Menu", {}, dsn)
 service.options = {
     "1": ("Register User", service.register_user),
     "2": ("Register Admin", service.register_admin),
     "3": ("Add Ticket (Admin only)", service.add_ticket),
-    "4": ("Create Tables", service.create_tables),
-    "5": ("all tickets" , service.show_tickets),
-    "6": ("Exit", lambda: setattr(service, "running", False))
+    "4": ("Show All Tickets", service.show_tickets),
+    "5": ("Buy Ticket", service.buy_ticket),
+    "6": ("Dashboard (Wallet & History)", service.open_dashboard),
+    "7": ("Create Tables", service.create_tables),
+    "8": ("Exit", lambda: setattr(service, "running", False))
 }
 service.run()
