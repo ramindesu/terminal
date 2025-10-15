@@ -1,8 +1,10 @@
 from classes import *
 from db import Database
 from pprint import pprint
+from os import system
+system("clear")
 
-dsn = 'dbname=terminal user=postgres password=shir884 host=localhost'
+dsn = 'dbname=terminal user=mohammadi password=shir884 host=localhost port=5432'
 
 
 def admin_only(func):
@@ -31,6 +33,7 @@ class Service:
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(50) NOT NULL,
                 email VARCHAR(100) UNIQUE NOT NULL,
+                wallet INT DEFAULT 0,
                 registered TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             """)
@@ -90,6 +93,14 @@ class Service:
         user = Traveller(email, username, password)
         self.current_user = user
         self.dashboard = dashboard(user, 0)  
+
+        with Database(self.data) as cur:
+            cur.execute("""
+                INSERT INTO users (username, email, wallet)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (email) DO NOTHING;
+            """, (username, email, 0))
+
         self.add_log("register_user")
         print(f" User {user.username} registered successfully!")
 
@@ -100,6 +111,14 @@ class Service:
         password = input("Enter admin password: ")
         admin = Admin(email, username, password)
         self.current_user = admin
+
+        with Database(self.data) as cur:
+            cur.execute("""
+                INSERT INTO users (username, email)
+                VALUES (%s, %s)
+                ON CONFLICT (email) DO NOTHING;
+            """, (username, email))
+
         self.add_log("register_admin")
         print(f" Admin {admin.username} registered successfully!")
 
@@ -108,12 +127,30 @@ class Service:
     def add_ticket(self):
         start = input("Enter journey start date (YYYY-MM-DD): ")
         end = input("Enter journey end date (YYYY-MM-DD): ")
+        origin = input("Enter origin: ")
+        destination = input("Enter destination: ")
         cost = int(input("Enter ticket cost: "))
+
+        with Database(self.data) as cur:
+
+            cur.execute("""
+                INSERT INTO journey (start, end_date, origin, destination)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id;
+            """, (start, end, origin, destination))
+            journey_id = cur.fetchone()[0]
+
+
+            cur.execute("""
+                INSERT INTO ticket (journey_id, price)
+                VALUES (%s, %s);
+            """, (journey_id, cost))
+
         journey = Journey(start, end)
         ticket = Ticket(journey, cost)
         self.tickets.append(ticket)
-        self.add_log("add_ticket")
-        print(f" Ticket added for journey {start} → {end} (Cost: {cost}$)")
+        self.add_log("add_ticket", journey_id)
+        print(f" Ticket added for journey {start} => {end} (Cost: {cost}$)")
 
 
     def show_tickets(self):
@@ -145,14 +182,30 @@ class Service:
 
             ticket = self.tickets[choice]
 
-
             if self.dashboard.wallet < ticket.cost:
                 raise NotEnoughCash(f" Not enough money. You need {ticket.cost - self.dashboard.wallet}$ more.")
 
-            self.dashboard._dashboard__wallet -= ticket.cost 
+            self.dashboard._dashboard__wallet -= ticket.cost
             self.current_user.get_ticket(ticket)
-            self.add_log("buy_ticket")
 
+
+            with Database(self.data) as cur:
+                cur.execute("SELECT id FROM users WHERE email = %s;", (self.current_user.email,))
+                user_id = cur.fetchone()[0]
+
+                cur.execute("""
+                    SELECT id FROM journey WHERE start = %s AND end_date = %s LIMIT 1;
+                """, (ticket.journey.start, ticket.journey.end))
+                journey_id = cur.fetchone()[0]
+
+                cur.execute("""
+                    UPDATE ticket
+                    SET user_id = %s
+                    WHERE journey_id = %s
+                    LIMIT 1;
+                """, (user_id, journey_id))
+
+            self.add_log("buy_ticket", journey_id)
             print(f" Ticket purchased successfully! Remaining wallet: {self.dashboard.wallet}$")
 
         except (ValueError, ChoiseError, NotEnoughCash) as e:
@@ -179,7 +232,7 @@ class Service:
                 except ValueError:
                     print(" Invalid amount.")
             elif choice == "2":
-                print(f"\nTicket history for {self.current_user.username}:")
+                print(f"\n Ticket history for {self.current_user.username}:")
                 self.dashboard.history(self.current_user)
                 self.add_log("view_history")
             elif choice == "3":
@@ -192,6 +245,7 @@ class Service:
         print(f"\n==== {self.title} ====")
         for num, (desc, _) in self.options.items():
             print(f"{num}. {desc}")
+
 
     def run(self):
         while self.running:
