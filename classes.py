@@ -19,13 +19,17 @@ class Journey:
             raise ValueError("Only 'canceled', 'done', or 'pending' are allowed.")
         self.status = status
 
+    def __str__(self):
+        return f"{self.start} => {self.end} | Status: {self.status}"
+
 
 class Ticket:
     def __init__(self, journey: Journey, cost):
         self.journey = journey
         self.cost = cost
+
     def __str__(self):
-        return f"journey: {self.journey} , cost: {self.cost}"
+        return f"Journey: {self.journey} | Cost: {self.cost}$"
 
 
 class Traveller(User):
@@ -46,7 +50,7 @@ class Admin(User):
 
 class dashboard():
     def __init__(self,user:Traveller,wallet):
-        self.user = list(user)
+        self.user = user
         self.__wallet = wallet
 
     @property 
