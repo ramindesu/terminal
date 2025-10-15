@@ -105,6 +105,10 @@ class Service:
         self.tickets.append(ticket)
         self.add_log("add_ticket")
         print(f"Ticket added for journey {start} → {end} (Cost: {cost})")
+    
+    def show_tickets(self):
+        for ticket in self.tickets:
+            print(ticket)
 
     def show(self):
         print(f"\n==== {self.title} ====")
@@ -132,6 +136,7 @@ service.options = {
     "2": ("Register Admin", service.register_admin),
     "3": ("Add Ticket (Admin only)", service.add_ticket),
     "4": ("Create Tables", service.create_tables),
-    "5": ("Exit", lambda: setattr(service, "running", False))
+    "5": ("all tickets" , service.show_tickets),
+    "6": ("Exit", lambda: setattr(service, "running", False))
 }
 service.run()
