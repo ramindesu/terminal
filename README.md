@@ -25,7 +25,8 @@ Supports user registration, admin management, ticket purchasing, and a dashboard
 - PostgreSQL  
 - `psycopg` library for Python-PostgreSQL connectivity  
 
+
 Install the library via pip:
 
 ```bash
-pip install psycopg[binary]
+pip install requirements.txt
