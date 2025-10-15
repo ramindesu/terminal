@@ -47,4 +47,5 @@ def validate_password(password):
 def validate_email(email):
     if not email_validte.match(email):
         raise ValidateError("email is not okay")
+    return email
     
