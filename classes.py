@@ -50,27 +50,29 @@ class Ticket:
         self.journey = journey
         self.cost = cost
         self.quantity = quantity
-        self.status = 'pending' 
+        self.status = 'pending'
 
     def reserve(self):
-       
+        if self.status != 'pending':
+            raise JourneyStarted("Ticket cannot be reserved now.")
         if self.quantity <= 0:
-            raise ValueError("No tickets available for reservation.")
+            raise ValueError("No tickets left.")
         self.quantity -= 1
         self.status = 'reserved'
+        print(" Ticket reserved successfully.")
 
     def confirm(self):
-       
         if self.status != 'reserved':
-            raise ValueError("Only reserved tickets can be confirmed.")
+            raise JourneyStarted("Only reserved tickets can be confirmed.")
         self.status = 'paid'
+        print(" Ticket payment confirmed.")
 
     def cancel_reservation(self):
-        
-        if self.status not in ['reserved', 'paid']:
-            raise ValueError("Only reserved or paid tickets can be canceled.")
+        if self.status not in ('reserved', 'paid'):
+            raise JourneyStarted("Only reserved or paid tickets can be canceled.")
         self.status = 'canceled'
         self.quantity += 1
+        print(" Ticket canceled.")
 
     def __str__(self):
         return f"Journey: {self.journey} | Cost: {self.cost}$ | Status: {self.status} | Qty: {self.quantity}"
