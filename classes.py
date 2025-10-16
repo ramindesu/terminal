@@ -45,13 +45,32 @@ class Journey:
         return f"{self.start} => {self.end} | {origin_dest} | Status: {self.status}"
 
 
-
 class Ticket:
     def __init__(self, journey: Journey, cost, quantity=1):
         self.journey = journey
         self.cost = cost
         self.quantity = quantity
-        self.status = 'pending'  
+        self.status = 'pending' 
+
+    def reserve(self):
+       
+        if self.quantity <= 0:
+            raise ValueError("No tickets available for reservation.")
+        self.quantity -= 1
+        self.status = 'reserved'
+
+    def confirm(self):
+       
+        if self.status != 'reserved':
+            raise ValueError("Only reserved tickets can be confirmed.")
+        self.status = 'paid'
+
+    def cancel_reservation(self):
+        
+        if self.status not in ['reserved', 'paid']:
+            raise ValueError("Only reserved or paid tickets can be canceled.")
+        self.status = 'canceled'
+        self.quantity += 1
 
     def __str__(self):
         return f"Journey: {self.journey} | Cost: {self.cost}$ | Status: {self.status} | Qty: {self.quantity}"
@@ -80,6 +99,6 @@ class dashboard:
         if not self.user.tickets:
             print("No tickets purchased yet.")
         else:
-            print("📜 Ticket history:")
+            print(" Ticket history:")
             for ticket in self.user.tickets:
-                pprint(ticket)
+                print(ticket)
