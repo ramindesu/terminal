@@ -26,8 +26,6 @@ class Service:
         self.tickets = []
         self.dashboard = None
 
-
-
     def create_tables(self):
         with Database(self.data) as cur:
             cur.execute("""
@@ -80,9 +78,7 @@ class Service:
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-        print(" Tables created successfully!")
-
-
+        print("Tables created successfully!")
 
     def add_log(self, action, journey_id=None):
         if not self.current_user:
@@ -97,47 +93,36 @@ class Service:
                 )
             """, (self.current_user.email, action, journey_id))
 
-
-
     def register_user(self):
         email = input("Enter email: ")
         username = input("Enter username: ")
         password = input("Enter password: ")
-
         user = Traveller(email, username, password)
         self.current_user = user
         self.dashboard = dashboard(user, 0)
-
         with Database(self.data) as cur:
             cur.execute("""
                 INSERT INTO users (username, email, wallet)
                 VALUES (%s, %s, 0)
                 ON CONFLICT (email) DO NOTHING;
             """, (username, email))
-
-        print(f" User {username} registered successfully!")
+        print(f"User {username} registered successfully!")
         self.add_log("register_user")
-
 
     def register_admin(self):
         email = input("Enter admin email: ")
         username = input("Enter admin username: ")
         password = input("Enter admin password: ")
-
         admin = Admin(email, username, password)
         self.current_user = admin
-
         with Database(self.data) as cur:
             cur.execute("""
                 INSERT INTO users (username, email)
                 VALUES (%s, %s)
                 ON CONFLICT (email) DO NOTHING;
             """, (username, email))
-
-        print(f" Admin {username} registered successfully!")
+        print(f"Admin {username} registered successfully!")
         self.add_log("register_admin")
-
-
 
     @admin_only
     def add_ticket(self):
@@ -147,7 +132,6 @@ class Service:
         destination = input("Enter destination: ")
         cost = int(input("Enter ticket cost: "))
         quantity = int(input("Enter ticket quantity: "))
-
         with Database(self.data) as cur:
             cur.execute("""
                 INSERT INTO journey (start, end_date, origin, destination)
@@ -155,96 +139,69 @@ class Service:
                 RETURNING id;
             """, (start, end, origin, destination))
             journey_id = cur.fetchone()[0]
-
             cur.execute("""
                 INSERT INTO ticket (journey_id, price, quantity)
                 VALUES (%s, %s, %s);
             """, (journey_id, cost, quantity))
-
         ticket = Ticket(Journey(start, end, origin, destination), cost, quantity)
         self.tickets.append(ticket)
-        print(f"🎫 Ticket added: {origin} → {destination} | {cost}$ | Qty: {quantity}")
+        print(f"Ticket added: {origin} → {destination} | {cost}$ | Qty: {quantity}")
         self.add_log("add_ticket", journey_id)
-
-
 
     def show_tickets(self):
         if not self.tickets:
             print("No tickets available.")
             return
-        print("\n🎟 Available tickets:")
         for i, t in enumerate(self.tickets, start=1):
             print(f"{i}. {t}")
-
-
 
     def reserve_ticket(self):
         if not isinstance(self.current_user, Traveller):
-            print(" Only travellers can reserve tickets.")
+            print("Only travellers can reserve tickets.")
             return
         if not self.tickets:
-            print(" No tickets available.")
+            print("No tickets available.")
             return
-
         for i, t in enumerate(self.tickets, start=1):
             print(f"{i}. {t}")
-
-        try:
-            choice = int(input("Enter ticket number to reserve: ")) - 1
-            ticket = self.tickets[choice]
-
-            ticket.reserve()
-            self.current_user.get_ticket(ticket)
-
-            with Database(self.data) as cur:
-                cur.execute("SELECT id FROM users WHERE email=%s;", (self.current_user.email,))
-                user_id = cur.fetchone()[0]
-
-                cur.execute("""
-                    UPDATE ticket SET status='reserved', quantity=%s, user_id=%s
-                    WHERE journey_id=(SELECT id FROM journey WHERE start=%s AND end_date=%s LIMIT 1);
-                """, (ticket.quantity, user_id, ticket.journey.start, ticket.journey.end))
-
-                cur.execute("""
-                    INSERT INTO transactions (user_id, ticket_id, type, amount)
-                    VALUES (%s, (SELECT id FROM ticket WHERE journey_id=(SELECT id FROM journey WHERE start=%s AND end_date=%s LIMIT 1)), 'reserve', 0);
-                """, (user_id, ticket.journey.start, ticket.journey.end))
-
-            print(" Ticket reserved successfully.")
-            self.add_log("reserve_ticket")
-
-        except Exception as e:
-            print(f"Error: {e}")
-
-
+        choice = int(input("Enter ticket number to reserve: ")) - 1
+        ticket = self.tickets[choice]
+        ticket.reserve()
+        self.current_user.get_ticket(ticket)
+        with Database(self.data) as cur:
+            cur.execute("SELECT id FROM users WHERE email=%s;", (self.current_user.email,))
+            user_id = cur.fetchone()[0]
+            cur.execute("""
+                UPDATE ticket SET status='reserved', quantity=%s, user_id=%s
+                WHERE journey_id=(SELECT id FROM journey WHERE start=%s AND end_date=%s LIMIT 1);
+            """, (ticket.quantity, user_id, ticket.journey.start, ticket.journey.end))
+            cur.execute("""
+                INSERT INTO transactions (user_id, ticket_id, type, amount)
+                VALUES (%s, (SELECT id FROM ticket WHERE journey_id=(SELECT id FROM journey WHERE start=%s AND end_date=%s LIMIT 1)), 'reserve', 0);
+            """, (user_id, ticket.journey.start, ticket.journey.end))
+        print("Ticket reserved successfully.")
+        self.add_log("reserve_ticket")
 
     def confirm_reservation(self):
         if not self.current_user or not self.current_user.tickets:
             print("No reserved tickets to confirm.")
             return
-
         reserved_tickets = [t for t in self.current_user.tickets if t.status == 'reserved']
         if not reserved_tickets:
             print("No reserved tickets found.")
             return
-
         for i, t in enumerate(reserved_tickets, start=1):
             print(f"{i}. {t}")
-
         choice = int(input("Select reserved ticket to confirm: ")) - 1
         ticket = reserved_tickets[choice]
-
         if self.dashboard.wallet < ticket.cost:
-            print(" Not enough funds.")
+            print("Not enough funds.")
             return
-
         ticket.confirm()
         self.dashboard._dashboard__wallet -= ticket.cost
-
         with Database(self.data) as cur:
             cur.execute("SELECT id FROM users WHERE email=%s;", (self.current_user.email,))
             user_id = cur.fetchone()[0]
-
             cur.execute("""
                 UPDATE ticket SET status='paid' WHERE status='reserved' AND user_id=%s;
             """, (user_id,))
@@ -252,70 +209,68 @@ class Service:
                 INSERT INTO transactions (user_id, ticket_id, type, amount)
                 VALUES (%s, (SELECT id FROM ticket WHERE user_id=%s LIMIT 1), 'buy', %s);
             """, (user_id, user_id, ticket.cost))
-
-        print(f" Reservation confirmed and paid {ticket.cost}$")
+        print(f"Reservation confirmed and paid {ticket.cost}$")
         self.add_log("confirm_reservation")
-
-
 
     def cancel_ticket(self):
         if not isinstance(self.current_user, Traveller):
-            print(" Only travellers can cancel tickets.")
+            print("Only travellers can cancel tickets.")
             return
-
         if not self.current_user.tickets:
             print("No tickets to cancel.")
             return
-
         for i, t in enumerate(self.current_user.tickets, start=1):
             print(f"{i}. {t}")
-
         choice = int(input("Enter ticket number to cancel: ")) - 1
         ticket = self.current_user.tickets[choice]
-
-        ticket.cancel_reservation()
-        refund = 0
-        if ticket.status == 'canceled' and ticket.cost > 0:
-            refund = int(ticket.cost * 0.8)
-            self.dashboard._dashboard__wallet += refund
-
+        if ticket.status != 'paid':
+            print("Only paid tickets can be canceled.")
+            return
+        refund = int(ticket.cost * 0.8)
+        self.dashboard._dashboard__wallet += refund
+        ticket.status = 'canceled'
+        ticket.quantity += 1
         with Database(self.data) as cur:
             cur.execute("SELECT id FROM users WHERE email=%s;", (self.current_user.email,))
             user_id = cur.fetchone()[0]
-
             cur.execute("""
-                UPDATE ticket SET status='canceled', quantity=%s WHERE user_id=%s;
+                UPDATE ticket 
+                SET status='canceled', quantity=%s 
+                WHERE user_id=%s;
             """, (ticket.quantity, user_id))
             cur.execute("""
                 INSERT INTO transactions (user_id, ticket_id, type, amount)
                 VALUES (%s, (SELECT id FROM ticket WHERE user_id=%s LIMIT 1), 'cancel', %s);
             """, (user_id, user_id, refund))
-
-        print(f" Ticket canceled. Refund: {refund}$")
+            cur.execute("""
+                INSERT INTO transactions (user_id, ticket_id, type, amount)
+                VALUES (%s, (SELECT id FROM ticket WHERE user_id=%s LIMIT 1), 'refund', -%s);
+            """, (user_id, user_id, refund))
+        print(f"Ticket canceled. Refund: {refund}$ returned to wallet.")
         self.add_log("cancel_ticket")
-
-
 
     @admin_only
     def show_revenue(self):
         with Database(self.data) as cur:
-            cur.execute("SELECT SUM(amount) FROM transactions WHERE type='buy';")
+            cur.execute("""
+                SELECT 
+                    COALESCE(SUM(CASE WHEN type='buy' THEN amount ELSE 0 END), 0) +
+                    COALESCE(SUM(CASE WHEN type='refund' THEN amount ELSE 0 END), 0)
+                FROM transactions;
+            """)
             revenue = cur.fetchone()[0] or 0
-        print(f" Total revenue: {revenue}$")
-
-
+        print(f"Total revenue (after refunds): {revenue}$")
 
     def open_dashboard(self):
         if not isinstance(self.current_user, Traveller):
-            print(" Only travellers have a dashboard.")
+            print("Only travellers have a dashboard.")
             return
         while True:
-            print(f"\n Dashboard — {self.current_user.username}")
+            print(f"\nDashboard — {self.current_user.username}")
             print("1. Charge wallet")
             print("2. View history")
             print("3. Back")
             choice = input("Enter choice: ")
-
             if choice == "1":
                 try:
                     amount = int(input("Enter amount: "))
@@ -327,8 +282,6 @@ class Service:
                 self.dashboard.history()
             elif choice == "3":
                 break
-
-
 
     def show(self):
         print(f"\n==== {self.title} ====")
@@ -365,4 +318,3 @@ service.options = {
 }
 
 service.run()
-
