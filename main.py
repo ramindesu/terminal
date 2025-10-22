@@ -63,6 +63,7 @@ class Service:
                     user_id INT REFERENCES users(id) ON DELETE CASCADE,
                     action VARCHAR(50),
                     journey_id INT REFERENCES journey(id) ON DELETE CASCADE,
+                    actor VARCHAR(60),
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
@@ -79,17 +80,33 @@ class Service:
         print("Tables created successfully!")
 
     def add_log(self, action, journey_id=None):
+
         if not self.current_user:
             return
+        
+
+        if isinstance(self.current_user, Admin):
+            actor_type = "Admin"
+        elif isinstance(self.current_user, Traveller):
+            actor_type = "Traveller"
+        else:
+            actor_type = "Unknown"
+
         with Database(self.data) as cur:
             cur.execute("""
-                INSERT INTO logs (user_id, action, journey_id)
+                INSERT INTO logs (user_id, action, journey_id, actor)
                 VALUES (
                     (SELECT id FROM users WHERE email=%s LIMIT 1),
                     %s,
+                    %s,
                     %s
-                )
-            """, (self.current_user.email, action, journey_id))
+                );
+            """, (
+                self.current_user.email,
+                action,
+                journey_id,
+                actor_type
+            ))
 
     def register_user(self):
         email = input("Enter email: ")
